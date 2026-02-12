@@ -53,11 +53,10 @@ If `mod.path` fails, the address may not belong to a loaded module. Tell the use
 Execute:
 
 ```
-python "<skill_base_dir>\scripts\decompile.py" --binary "<module_path>" --address <rva_hex>
+python "${CLAUDE_PLUGIN_ROOT}\skills\decompile\decompile.py" --binary "<module_path>" --address <rva_hex>
 ```
 
 Where:
-- `<skill_base_dir>` is the base directory provided at the top of this skill's invocation context
 - `<module_path>` is the on-disk path from step 4
 - `<rva_hex>` is the RVA in hex (e.g. `0x1060`)
 

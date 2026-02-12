@@ -85,8 +85,44 @@ def parse_bin_filename(filename: str) -> tuple[str, str] | None:
     return None
 
 
-def scan_snapshot(compiled_rules: list, snapshot_dir: Path, memory_map: list[dict]) -> list[dict]:
-    """Scan all .bin files in the snapshot directory against compiled YARA rules."""
+def _get_module_regions(memory_map: list[dict], module_filter: str) -> list[dict]:
+    """Find all memory map entries belonging to a module (PE header + sections)."""
+    # Find the base address of the target module
+    module_bases = set()
+    for entry in memory_map:
+        info = entry.get("info", "")
+        if module_filter.lower() in info.lower():
+            module_bases.add(int(entry["base"], 16))
+    if not module_bases:
+        return []
+    module_base = min(module_bases)
+    # Include all contiguous regions from this module (PE header + sections)
+    regions = []
+    for entry in memory_map:
+        entry_base = int(entry["base"], 16)
+        info = entry.get("info", "")
+        if entry_base >= module_base and (module_filter.lower() in info.lower() or info.startswith(' ".')):
+            if entry_base < module_base + 0x10000000:  # reasonable max module size
+                regions.append(entry)
+    return regions
+
+
+def _offset_to_region(offset: int, region_layout: list[tuple[int, int, dict]]) -> dict | None:
+    """Map a byte offset within a merged buffer back to its source region."""
+    for start, end, entry in region_layout:
+        if start <= offset < end:
+            return entry
+    return None
+
+
+def scan_snapshot(compiled_rules: list, snapshot_dir: Path, memory_map: list[dict], module_filter: str | None = None) -> list[dict]:
+    """Scan memory regions against compiled YARA rules.
+
+    When module_filter is set, all regions for that module are merged into a
+    single contiguous buffer before scanning. This ensures cross-section YARA
+    rules (e.g. MD5 init constants in .text + T-table in .rdata) can match.
+    Without module_filter, each region .bin file is scanned independently.
+    """
     # Build lookup from filename to memory map entry
     region_lookup = {}
     for entry in memory_map:
@@ -94,6 +130,72 @@ def scan_snapshot(compiled_rules: list, snapshot_dir: Path, memory_map: list[dic
             region_lookup[entry["file"]] = entry
 
     bin_files = sorted(snapshot_dir.glob("*.bin"))
+
+    # --- Module-filtered mode: merge regions and scan as one buffer ---
+    if module_filter:
+        module_regions = _get_module_regions(memory_map, module_filter)
+        module_files = {e.get("file") for e in module_regions}
+        bin_files = [f for f in bin_files if f.name in module_files]
+
+        if not bin_files:
+            print(f"[-] No regions found for module '{module_filter}'", file=sys.stderr)
+            return []
+
+        module_base = min(int(e["base"], 16) for e in module_regions)
+        print(f"[*] Module filter '{module_filter}': merging {len(bin_files)} regions (base 0x{module_base:X})")
+
+        # Build merged buffer and a layout map for translating offsets back to regions
+        merged = bytearray()
+        region_layout = []  # list of (buf_start, buf_end, memory_map_entry)
+        for bf in bin_files:
+            data = bf.read_bytes()
+            buf_start = len(merged)
+            merged.extend(data)
+            buf_end = len(merged)
+            region_layout.append((buf_start, buf_end, region_lookup.get(bf.name, {})))
+
+        merged_bytes = bytes(merged)
+        total_size = len(merged_bytes)
+        print(f"[*] Scanning merged buffer ({total_size:,} bytes)...")
+
+        all_matches = []
+        for rule_source, rules in compiled_rules:
+            try:
+                matches = rules.match(data=merged_bytes)
+            except Exception:
+                continue
+
+            for match in matches:
+                match_entry = {
+                    "rule": match.rule,
+                    "rule_source": rule_source,
+                    "tags": list(match.tags),
+                    "meta": {k: v for k, v in match.meta.items()} if match.meta else {},
+                    "region_file": f"<merged:{module_filter}>",
+                    "region_base": hex(module_base),
+                    "region_size": hex(total_size),
+                    "region_info": module_filter,
+                    "region_protect": "",
+                    "strings": [],
+                }
+
+                for string_match in match.strings:
+                    for instance in string_match.instances:
+                        src_region = _offset_to_region(instance.offset, region_layout)
+                        src_info = src_region.get("info", "") if src_region else ""
+                        match_entry["strings"].append({
+                            "offset": hex(instance.offset),
+                            "identifier": string_match.identifier,
+                            "data_hex": instance.matched_data.hex(),
+                            "data_ascii": instance.matched_data.decode("ascii", errors="replace")[:64],
+                            "region": src_info,
+                        })
+
+                all_matches.append(match_entry)
+
+        return all_matches
+
+    # --- Standard mode: scan each region independently ---
     if not bin_files:
         print("[-] No .bin memory region files found in snapshot directory", file=sys.stderr)
         return []
@@ -126,13 +228,14 @@ def scan_snapshot(compiled_rules: list, snapshot_dir: Path, memory_map: list[dic
                     "strings": [],
                 }
 
-                for offset, identifier, data_bytes in match.strings:
-                    match_entry["strings"].append({
-                        "offset": hex(offset),
-                        "identifier": identifier,
-                        "data_hex": data_bytes.hex(),
-                        "data_ascii": data_bytes.decode("ascii", errors="replace")[:64],
-                    })
+                for string_match in match.strings:
+                    for instance in string_match.instances:
+                        match_entry["strings"].append({
+                            "offset": hex(instance.offset),
+                            "identifier": string_match.identifier,
+                            "data_hex": instance.matched_data.hex(),
+                            "data_ascii": instance.matched_data.decode("ascii", errors="replace")[:64],
+                        })
 
                 all_matches.append(match_entry)
 
@@ -190,6 +293,7 @@ def main():
     parser.add_argument("--snapshot-dir", required=True, help="Path to snapshot directory")
     parser.add_argument("--yarasigs-dir", required=True, help="Path to yarasigs repository")
     parser.add_argument("--categories", required=True, help="Rule category: packers, crypto, antidebug, all")
+    parser.add_argument("--module-filter", default=None, help="Only scan regions belonging to this module (substring match on info field, e.g. 'secret_encryptor')")
     args = parser.parse_args()
 
     snapshot_dir = Path(args.snapshot_dir)
@@ -229,7 +333,7 @@ def main():
             print(f"    ... and {len(compile_errors) - 10} more", file=sys.stderr)
 
     # Scan
-    matches = scan_snapshot(compiled, snapshot_dir, memory_map)
+    matches = scan_snapshot(compiled, snapshot_dir, memory_map, module_filter=args.module_filter)
 
     # Write JSON results
     results_path = snapshot_dir / "yara_results.json"

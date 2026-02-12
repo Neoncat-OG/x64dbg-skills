@@ -31,7 +31,7 @@ Call `mcp__x64dbg__disconnect` to release the ZMQ connection. This is **required
 Execute the snapshot script:
 
 ```
-python "${CLAUDE_PLUGIN_ROOT}\scripts\state_snapshot.py" --x64dbg-path "<x64dbg_path>" --pid <session_pid>
+python "${CLAUDE_PLUGIN_ROOT}\skills\state-snapshot\state_snapshot.py" --x64dbg-path "<x64dbg_path>" --pid <session_pid>
 ```
 
 Where:

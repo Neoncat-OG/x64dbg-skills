@@ -29,7 +29,7 @@ If the user specified two snapshot paths, use those directly. Otherwise, present
 Execute the diff engine:
 
 ```
-python "${CLAUDE_PLUGIN_ROOT}\scripts\state_diff.py" --before <before_snapshot_dir> --after <after_snapshot_dir>
+python "${CLAUDE_PLUGIN_ROOT}\skills\state-diff\state_diff.py" --before <before_snapshot_dir> --after <after_snapshot_dir>
 ```
 
 The script writes `diff_report.json` into the after-snapshot directory by default. If the user specified a custom output path, pass `--output <path>`.

@@ -63,10 +63,12 @@ To take a fresh snapshot, invoke the `state-snapshot` skill via `Skill("state-sn
 Execute the scan script:
 
 ```
-python "${CLAUDE_PLUGIN_ROOT}\scripts\yara_scan.py" --snapshot-dir <snapshot_path> --yarasigs-dir "${CLAUDE_PLUGIN_ROOT}\yarasigs" --categories <category>
+python "${CLAUDE_PLUGIN_ROOT}\skills\yara-sigs\yara_scan.py" --snapshot-dir <snapshot_path> --yarasigs-dir "${CLAUDE_PLUGIN_ROOT}\yarasigs" --categories <category> [--module-filter <module_name>]
 ```
 
 Where `<category>` is one of: `packers`, `crypto`, `antidebug`, or `all`.
+
+**Module filtering:** If the user asks to focus on a specific module (e.g. the main executable), pass `--module-filter <name>` where `<name>` is a substring of the module name as shown in the memory map (e.g. `secret_encryptor`). This merges all of the module's sections into a single buffer before scanning, which is critical for YARA rules whose patterns span multiple PE sections (e.g. MD5 init constants in `.text` + T-table in `.rdata`). **Always prefer using `--module-filter` when scanning a specific module** rather than relying on per-region scanning.
 
 The script writes results to `<snapshot_path>/yara_results.json` and prints a summary to stdout.
 

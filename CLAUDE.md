@@ -5,7 +5,7 @@ Claude Code plugin providing skills for x64dbg debugger automation.
 ## Structure
 
 - `skills/` — Skill definitions (SKILL.md files define each skill's steps and allowed tools)
-- `scripts/` — Python scripts invoked by skills (`state_snapshot.py`, `state_diff.py`, `decompile.py`, `yara_scan.py`)
+- Each skill folder contains its own Python script (e.g. `skills/decompile/decompile.py`)
 - `.claude-plugin/` — Plugin metadata (`plugin.json`, `marketplace.json`)
 - `.claude/settings.local.json` — Default permission grants for x64dbg MCP tools
 
