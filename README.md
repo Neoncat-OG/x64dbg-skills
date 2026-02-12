@@ -25,6 +25,14 @@ Decompiles a function to C-like pseudocode using [angr](https://angr.io/):
 - Tries multiple decompiler strategies for best results
 - Suggests nearby functions if the specified address isn't a function entry
 
+### `/yara-sigs`
+
+Scans snapshot memory dumps with [YARA](https://virustotal.github.io/yara/) signatures from the [x64dbg yarasigs](https://github.com/x64dbg/yarasigs) database:
+- Automatically clones the yarasigs repo (including Yara-Rules and citizenlab submodules) on first use
+- Scan categories: **packers & compilers**, **crypto constants**, **anti-debug / anti-VM**, or **all signatures**
+- Builds on `/state-snapshot` — uses an existing snapshot or takes a fresh one
+- Reports matches grouped by rule with memory region addresses and metadata
+
 ## Prerequisites
 
 - [x64dbg](https://x64dbg.com/) installed
@@ -36,6 +44,10 @@ Decompiles a function to C-like pseudocode using [angr](https://angr.io/):
 - For the `/decompile` skill: [angr](https://pypi.org/project/angr/) (Python >= 3.10):
   ```
   pip install angr
+  ```
+- For the `/yara-sigs` skill: [yara-python](https://pypi.org/project/yara-python/) and [Git](https://git-scm.com/):
+  ```
+  pip install yara-python
   ```
 
 ## Installation
@@ -57,7 +69,7 @@ To update to the latest version:
 
 ## Usage
 
-<TODO BLOG>
+A decent guide that gives good ideas on how to use these skills: [Cooking with x64dbg and MCP](https://x64.ooo/posts/2025-02-12-cooking-with-x64dbg-and-mcp)
 
 ## License
 

@@ -9,7 +9,6 @@ Connects directly to a running x64dbg session via x64dbg_automate (ZMQ) and dump
 
 import argparse
 import json
-import sys
 import time
 from pathlib import Path
 
