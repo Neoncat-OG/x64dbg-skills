@@ -64,7 +64,7 @@ Traces execution (into or over calls) for N steps or until a condition is met, t
 Add the marketplace and install the plugin:
 
 ```
-/plugin marketplace add dariushoule/x64dbg-skills
+/plugin marketplace add Neoncat-OG/x64dbg-skills
 /plugin install x64dbg-skills
 ```
 
