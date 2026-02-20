@@ -5,7 +5,7 @@
     {
       "name": "x64dbg-skills",
       "description": "Skills for x64dbg debugger automation — state snapshots, memory analysis, and more",
-      "source": "."
+      "source": "./skills"
     }
   ]
 }
