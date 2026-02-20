@@ -1,6 +1,11 @@
 {
   "name": "x64dbg-skills",
-  "description": "Claude Code skills for x64dbg debugger automation",
+  "owner": {
+    "name": "dariushoule",
+  },
+  "metadata": {
+    "description": "Claude Code skills for x64dbg debugger automation",
+  },
   "plugins": [
     {
       "name": "x64dbg-skills",
