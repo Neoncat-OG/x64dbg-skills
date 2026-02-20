@@ -1,0 +1,9 @@
+{
+  "name": "x64dbg-skills",
+  "description": "Claude Code skills for x64dbg debugger automation — state snapshots, memory analysis, and more",
+  "author": {
+    "name": "dariushoule"
+  },
+  "repository": "https://github.com/dariushoule/x64dbg-skills",
+  "license": "MIT"
+}
